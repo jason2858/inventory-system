@@ -19,6 +19,7 @@ export default function ProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    material_id: '',
     is_product: true,
   })
   const [recipeData, setRecipeData] = useState<
@@ -61,10 +62,11 @@ export default function ProductsPage() {
       await createProduct(
         formData.name,
         formData.description || null,
+        formData.material_id ? Number(formData.material_id) : null,
         formData.is_product
       )
       setSuccess('產品新增成功！')
-      setFormData({ name: '', description: '', is_product: true })
+      setFormData({ name: '', description: '', material_id: '', is_product: true })
       setShowForm(false)
       await loadProducts()
     } catch (err) {
@@ -178,6 +180,29 @@ export default function ProductsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  對應物料 *
+                </label>
+                <select
+                  value={formData.material_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, material_id: e.target.value })
+                  }
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">選擇物料</option>
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.material_code} - {m.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  產品製作時會增加此物料的庫存
+                </p>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
@@ -190,7 +215,7 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => {
                     setShowForm(false)
-                    setFormData({ name: '', description: '', is_product: true })
+                    setFormData({ name: '', description: '', material_id: '', is_product: true })
                   }}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
@@ -209,6 +234,9 @@ export default function ProductsPage() {
                   產品名稱
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  對應物料
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   描述
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
@@ -219,29 +247,41 @@ export default function ProductsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                     尚無產品
                   </td>
                 </tr>
               ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {product.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {product.description || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={() => handleShowRecipe(product.id)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                      >
-                        設定配方
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                products.map((product) => {
+                  const productMaterial = materials.find((m) => m.id === product.material_id)
+                  return (
+                    <tr key={product.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {product.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {productMaterial ? (
+                          <span>
+                            {productMaterial.material_code} - {productMaterial.name}
+                          </span>
+                        ) : (
+                          <span className="text-red-500">未設定</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {product.description || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        <button
+                          onClick={() => handleShowRecipe(product.id)}
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          設定配方
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

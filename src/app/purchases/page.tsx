@@ -441,7 +441,14 @@ export default function PurchasesPage() {
                           : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {record.name}
+                        <div>
+                          <div className="font-medium">{record.name}</div>
+                          {(record.specification || (record.material_id && materials.find((m) => m.id === record.material_id)?.description)) && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {record.specification || materials.find((m) => m.id === record.material_id)?.description || ''}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {record.specification || '-'}

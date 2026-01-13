@@ -16,7 +16,13 @@ export interface Product {
   id: number
   name: string
   description: string | null
+  material_id: number | null // 產品對應的物料ID（產品本身也是物料）
   is_product: boolean // true: 產品, false: 出庫組合
+}
+
+// 產品（含物料資訊）
+export interface ProductWithMaterial extends Product {
+  material?: Material
 }
 
 // 產品配方（A+B+C→D）

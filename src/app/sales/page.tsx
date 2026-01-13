@@ -483,7 +483,14 @@ export default function SalesPage() {
                           : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {record.name}
+                        <div>
+                          <div className="font-medium">{record.name}</div>
+                          {record.material_id && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {materials.find((m) => m.id === record.material_id)?.description || ''}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {record.quantity}

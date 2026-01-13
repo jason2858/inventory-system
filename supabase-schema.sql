@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS products (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
+  material_id BIGINT, -- 產品對應的物料ID（產品本身也是物料）
   is_product BOOLEAN NOT NULL DEFAULT true -- true: 產品, false: 出庫組合
 );
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import type { Material } from '@/types/domain'
 import {
   getAllMaterials,
-  updateMaterialQuantity,
+  updateMaterial,
   deleteMaterial,
 } from '@/lib/inventoryService'
 
@@ -13,7 +13,7 @@ export default function MaterialTable() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editQuantity, setEditQuantity] = useState<number>(0)
+  const [editData, setEditData] = useState<Partial<Material>>({})
 
   useEffect(() => {
     loadMaterials()
@@ -34,15 +34,24 @@ export default function MaterialTable() {
 
   const handleEdit = (material: Material) => {
     setEditingId(material.id)
-    setEditQuantity(material.quantity)
+    setEditData({
+      material_code: material.material_code,
+      name: material.name,
+      description: material.description || '',
+      quantity: material.quantity,
+      unit: material.unit,
+      supplier: material.supplier || '',
+      notes: material.notes || '',
+    })
   }
 
   const handleSave = async (id: number) => {
     try {
       setError(null)
-      await updateMaterialQuantity(id, editQuantity)
+      await updateMaterial(id, editData)
       await loadMaterials()
       setEditingId(null)
+      setEditData({})
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新失敗')
     }
@@ -50,7 +59,7 @@ export default function MaterialTable() {
 
   const handleCancel = () => {
     setEditingId(null)
-    setEditQuantity(0)
+    setEditData({})
   }
 
   const handleDelete = async (id: number) => {
@@ -126,23 +135,56 @@ export default function MaterialTable() {
                 materials.map((material) => (
                   <tr key={material.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {material.material_code}
+                      {editingId === material.id ? (
+                        <input
+                          type="text"
+                          value={editData.material_code || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, material_code: e.target.value })
+                          }
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        material.material_code
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {material.name}
+                      {editingId === material.id ? (
+                        <input
+                          type="text"
+                          value={editData.name || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, name: e.target.value })
+                          }
+                          className="w-40 px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        material.name
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {material.description || '-'}
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                      {editingId === material.id ? (
+                        <textarea
+                          value={editData.description || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, description: e.target.value })
+                          }
+                          rows={2}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        <span className="truncate block">{material.description || '-'}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {editingId === material.id ? (
                         <input
                           type="number"
-                          value={editQuantity}
+                          value={editData.quantity || 0}
                           onChange={(e) =>
-                            setEditQuantity(Number(e.target.value))
+                            setEditData({ ...editData, quantity: Number(e.target.value) })
                           }
-                          className="w-24 px-2 py-1 border border-gray-300 rounded"
+                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
                           min="0"
                           step="0.01"
                         />
@@ -151,13 +193,46 @@ export default function MaterialTable() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {material.unit}
+                      {editingId === material.id ? (
+                        <input
+                          type="text"
+                          value={editData.unit || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, unit: e.target.value })
+                          }
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        material.unit
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {material.supplier || '-'}
+                      {editingId === material.id ? (
+                        <input
+                          type="text"
+                          value={editData.supplier || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, supplier: e.target.value })
+                          }
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        material.supplier || '-'
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {material.notes || '-'}
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                      {editingId === material.id ? (
+                        <textarea
+                          value={editData.notes || ''}
+                          onChange={(e) =>
+                            setEditData({ ...editData, notes: e.target.value })
+                          }
+                          rows={2}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      ) : (
+                        <span className="truncate block">{material.notes || '-'}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(material.updated_at).toLocaleString('zh-TW')}
