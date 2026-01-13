@@ -1,0 +1,483 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import type { PurchaseRecord, Material } from '@/types/domain'
+import {
+  getAllPurchaseRecords,
+  createPurchaseRecord,
+  updatePurchaseRecord,
+  deletePurchaseRecord,
+} from '@/lib/purchaseService'
+import { getAllMaterials } from '@/lib/inventoryService'
+
+export default function PurchasesPage() {
+  const [records, setRecords] = useState<PurchaseRecord[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [formData, setFormData] = useState({
+    purchase_date: new Date().toISOString().split('T')[0],
+    invoice_number: '',
+    material_id: '',
+    name: '',
+    specification: '',
+    description: '',
+    quantity: 0,
+    seller: '',
+    payer: '',
+    amount: 0,
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadRecords()
+    loadMaterials()
+  }, [])
+
+  const loadRecords = async () => {
+    try {
+      const data = await getAllPurchaseRecords()
+      setRecords(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '載入失敗')
+    }
+  }
+
+  const loadMaterials = async () => {
+    try {
+      const data = await getAllMaterials()
+      setMaterials(data)
+    } catch (err) {
+      console.error('載入物料失敗:', err)
+    }
+  }
+
+  const handleMaterialChange = (materialId: string) => {
+    const material = materials.find((m) => m.id === Number(materialId))
+    if (material) {
+      setFormData({
+        ...formData,
+        material_id: materialId,
+        name: material.name,
+        specification: material.description || '',
+      })
+    } else {
+      setFormData({
+        ...formData,
+        material_id: materialId,
+        name: '',
+        specification: '',
+      })
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const recordData = {
+        purchase_date: formData.purchase_date,
+        invoice_number: formData.invoice_number,
+        material_id: formData.material_id ? Number(formData.material_id) : null,
+        name: formData.name,
+        specification: formData.specification || null,
+        description: formData.description || null,
+        quantity: formData.quantity,
+        seller: formData.seller || null,
+        payer: formData.payer || null,
+        amount: formData.amount,
+      }
+
+      if (editingId) {
+        await updatePurchaseRecord(editingId, recordData)
+        setSuccess('採購紀錄更新成功！')
+      } else {
+        await createPurchaseRecord(recordData)
+        setSuccess('採購紀錄新增成功！')
+      }
+
+      resetForm()
+      await loadRecords()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '操作失敗')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      purchase_date: new Date().toISOString().split('T')[0],
+      invoice_number: '',
+      material_id: '',
+      name: '',
+      specification: '',
+      description: '',
+      quantity: 0,
+      seller: '',
+      payer: '',
+      amount: 0,
+    })
+    setShowForm(false)
+    setEditingId(null)
+  }
+
+  const handleEdit = (record: PurchaseRecord) => {
+    setFormData({
+      purchase_date: record.purchase_date,
+      invoice_number: record.invoice_number,
+      material_id: record.material_id?.toString() || '',
+      name: record.name,
+      specification: record.specification || '',
+      description: record.description || '',
+      quantity: record.quantity,
+      seller: record.seller || '',
+      payer: record.payer || '',
+      amount: record.amount,
+    })
+    setEditingId(record.id)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('確定要刪除此採購紀錄嗎？')) {
+      return
+    }
+
+    try {
+      await deletePurchaseRecord(id)
+      setSuccess('採購紀錄刪除成功！')
+      await loadRecords()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '刪除失敗')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+          >
+            ← 返回首頁
+          </Link>
+        </div>
+
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">採購紀錄</h1>
+          <button
+            onClick={() => {
+              resetForm()
+              setShowForm(true)
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            + 新增採購紀錄
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded text-green-700">
+            {success}
+          </div>
+        )}
+
+        {showForm && (
+          <div className="mb-6 bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">
+              {editingId ? '編輯採購紀錄' : '新增採購紀錄'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    採購日期 *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.purchase_date}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchase_date: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    發票編號 *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.invoice_number}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        invoice_number: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    物料編號
+                  </label>
+                  <select
+                    value={formData.material_id}
+                    onChange={(e) => handleMaterialChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">選擇物料（可選）</option>
+                    {materials.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.material_code} - {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    名稱 *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    規格
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.specification}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        specification: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    說明
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    數量 *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        quantity: Number(e.target.value),
+                      })
+                    }
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    賣方
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.seller}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seller: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    支付人
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.payer}
+                    onChange={(e) =>
+                      setFormData({ ...formData, payer: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    金額 *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        amount: Number(e.target.value),
+                      })
+                    }
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? '處理中...' : editingId ? '更新' : '新增'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    採購日期
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    發票編號
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    物料編號
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    名稱
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    規格
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    數量
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    賣方
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    金額
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {records.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
+                      尚無採購紀錄
+                    </td>
+                  </tr>
+                ) : (
+                  records.map((record) => (
+                    <tr key={record.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.purchase_date}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.invoice_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {record.material_id
+                          ? materials.find((m) => m.id === record.material_id)
+                              ?.material_code || '-'
+                          : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {record.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {record.specification || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {record.quantity}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {record.seller || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${record.amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <button
+                          onClick={() => handleEdit(record)}
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          編輯
+                        </button>
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          刪除
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
