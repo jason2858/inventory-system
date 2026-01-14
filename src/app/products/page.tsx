@@ -10,8 +10,8 @@ import {
   setProductRecipe,
   deleteProduct,
   updateProduct,
-} from '@/lib/productService'
-import { getAllMaterials } from '@/lib/inventoryService'
+} from '@/lib/product-service'
+import { getAllMaterials } from '@/lib/inventory-service'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])

@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient'
+import { supabase } from './supabase-client'
 import type { Product, ProductRecipe, ProductRecipeWithMaterial } from '@/types/domain'
 
 /**

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Product } from '@/types/domain'
-import { getAllProducts, produceProduct } from '@/lib/productService'
+import { getAllProducts, produceProduct } from '@/lib/product-service'
 
 export default function ProductionPage() {
   const [products, setProducts] = useState<Product[]>([])

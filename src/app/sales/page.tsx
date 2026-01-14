@@ -8,8 +8,8 @@ import {
   createSalesRecord,
   updateSalesRecord,
   deleteSalesRecord,
-} from '@/lib/salesService'
-import { getAllMaterials } from '@/lib/inventoryService'
+} from '@/lib/sales-service'
+import { getAllMaterials } from '@/lib/inventory-service'
 
 export default function SalesPage() {
   const [records, setRecords] = useState<SalesRecord[]>([])

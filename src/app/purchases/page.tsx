@@ -8,8 +8,8 @@ import {
   createPurchaseRecord,
   updatePurchaseRecord,
   deletePurchaseRecord,
-} from '@/lib/purchaseService'
-import { getAllMaterials } from '@/lib/inventoryService'
+} from '@/lib/purchase-service'
+import { getAllMaterials } from '@/lib/inventory-service'
 
 export default function PurchasesPage() {
   const [records, setRecords] = useState<PurchaseRecord[]>([])

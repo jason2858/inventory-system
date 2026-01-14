@@ -6,7 +6,7 @@ import {
   getAllMaterials,
   updateMaterial,
   deleteMaterial,
-} from '@/lib/inventoryService'
+} from '@/lib/inventory-service'
 
 export default function MaterialTable() {
   const [materials, setMaterials] = useState<Material[]>([])

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import MaterialTable from '@/components/InventoryTable'
-import { createMaterial } from '@/lib/inventoryService'
+import MaterialTable from '@/components/inventory-table'
+import { createMaterial } from '@/lib/inventory-service'
 
 export default function MaterialsPage() {
   const [showForm, setShowForm] = useState(false)
