@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS materials (
   unit TEXT NOT NULL, -- 單位
   supplier TEXT, -- 供應商
   notes TEXT, -- 備註
+  low_stock_alert NUMERIC(10, 2), -- 庫存過低警示值（可選）
+  can_sell BOOLEAN NOT NULL DEFAULT false, -- 是否可作為銷售
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -83,9 +85,7 @@ CREATE TABLE IF NOT EXISTS sales_records (
   id BIGSERIAL PRIMARY KEY,
   sale_date DATE NOT NULL, -- 日期
   order_number TEXT NOT NULL, -- 訂單編號
-  material_id BIGINT, -- 物料編號（由應用層控制關聯）
-  name TEXT NOT NULL, -- 名稱
-  quantity NUMERIC(10, 2) NOT NULL, -- 數量
+  items JSONB NOT NULL DEFAULT '[]'::jsonb, -- 物料項目陣列：[{material_id, name, quantity}]
   customer TEXT, -- 銷售對象
   sales_amount NUMERIC(10, 2) NOT NULL DEFAULT 0, -- 銷售額
   receiver TEXT, -- 收款人

@@ -8,7 +8,7 @@ export async function getAllMaterials(): Promise<Material[]> {
   const { data, error } = await supabase
     .from('materials')
     .select('*')
-    .order('updated_at', { ascending: false })
+    .order('id', { ascending: true })
 
   if (error) {
     throw new Error(`取得物料失敗: ${error.message}`)
@@ -27,7 +27,9 @@ export async function createMaterial(
   unit: string,
   quantity: number,
   supplier: string | null,
-  notes: string | null
+  notes: string | null,
+  low_stock_alert: number | null = null,
+  can_sell: boolean = false
 ): Promise<Material> {
   const { data, error } = await supabase
     .from('materials')
@@ -39,6 +41,8 @@ export async function createMaterial(
       quantity,
       supplier,
       notes,
+      low_stock_alert,
+      can_sell,
     })
     .select()
     .single()

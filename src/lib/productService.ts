@@ -50,22 +50,32 @@ export async function createProduct(
 export async function getProductRecipes(productId: number): Promise<ProductRecipeWithMaterial[]> {
   const { data, error } = await supabase
     .from('product_recipes')
-    .select(`
-      *,
-      materials(*)
-    `)
+    .select('*')
     .eq('product_id', productId)
 
   if (error) {
     throw new Error(`取得產品配方失敗: ${error.message}`)
   }
 
-  return (data || []).map((item: any) => ({
-    product_id: item.product_id,
-    material_id: item.material_id,
-    quantity_required: item.quantity_required,
-    material: item.materials,
-  }))
+  // 手動取得物料資訊
+  const recipesWithMaterials = await Promise.all(
+    (data || []).map(async (item: any) => {
+      const { data: material } = await supabase
+        .from('materials')
+        .select('*')
+        .eq('id', item.material_id)
+        .single()
+
+      return {
+        product_id: item.product_id,
+        material_id: item.material_id,
+        quantity_required: item.quantity_required,
+        material: material || null,
+      }
+    })
+  )
+
+  return recipesWithMaterials
 }
 
 /**
@@ -104,6 +114,41 @@ export async function setProductRecipe(
 }
 
 /**
+ * 刪除產品配方
+ */
+export async function deleteProductRecipe(productId: number): Promise<void> {
+  const { error } = await supabase
+    .from('product_recipes')
+    .delete()
+    .eq('product_id', productId)
+
+  if (error) {
+    throw new Error(`刪除配方失敗: ${error.message}`)
+  }
+}
+
+/**
+ * 更新產品
+ */
+export async function updateProduct(
+  id: number,
+  updates: Partial<Product>
+): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`更新產品失敗: ${error.message}`)
+  }
+
+  return data
+}
+
+/**
  * 製作產品（扣原料物料，加產品物料）
  */
 export async function produceProduct(
@@ -113,7 +158,7 @@ export async function produceProduct(
   // 取得產品資訊
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('*, material_id')
+    .select('*')
     .eq('id', productId)
     .single()
 
@@ -214,22 +259,17 @@ export async function produceProduct(
 }
 
 /**
- * 刪除產品（會檢查是否有相關紀錄）
+ * 刪除產品（會同時刪除相關配方）
  */
 export async function deleteProduct(id: number): Promise<void> {
-  // 檢查是否有產品配方使用此產品
-  const { data: recipes, error: recipesError } = await supabase
+  // 先刪除產品配方（原料設定）
+  const { error: recipesError } = await supabase
     .from('product_recipes')
-    .select('material_id')
+    .delete()
     .eq('product_id', id)
-    .limit(1)
 
   if (recipesError) {
-    throw new Error(`檢查產品配方失敗: ${recipesError.message}`)
-  }
-
-  if (recipes && recipes.length > 0) {
-    throw new Error('無法刪除：此產品有設定的配方，請先刪除配方')
+    throw new Error(`刪除產品配方失敗: ${recipesError.message}`)
   }
 
   // 檢查是否有出庫組合使用此產品
@@ -247,7 +287,7 @@ export async function deleteProduct(id: number): Promise<void> {
     throw new Error('無法刪除：此產品正在出庫組合中使用')
   }
 
-  // 所有檢查通過，執行刪除
+  // 所有檢查通過，執行刪除產品
   const { error } = await supabase
     .from('products')
     .delete()

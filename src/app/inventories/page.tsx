@@ -15,6 +15,8 @@ export default function MaterialsPage() {
     quantity: 0,
     supplier: '',
     notes: '',
+    low_stock_alert: '',
+    can_sell: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +36,9 @@ export default function MaterialsPage() {
         formData.unit,
         formData.quantity,
         formData.supplier || null,
-        formData.notes || null
+        formData.notes || null,
+        formData.low_stock_alert ? Number(formData.low_stock_alert) : null,
+        formData.can_sell
       )
       setSuccess('物料新增成功！')
       setFormData({
@@ -45,6 +49,8 @@ export default function MaterialsPage() {
         quantity: 0,
         supplier: '',
         notes: '',
+        low_stock_alert: '',
+        can_sell: false,
       })
       setShowForm(false)
       // 重新載入頁面以更新表格
@@ -58,7 +64,7 @@ export default function MaterialsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <div className="mb-6">
           <Link
             href="/"
@@ -220,6 +226,8 @@ export default function MaterialsPage() {
                       quantity: 0,
                       supplier: '',
                       notes: '',
+                      low_stock_alert: '',
+                      can_sell: false,
                     })
                     setError(null)
                     setSuccess(null)

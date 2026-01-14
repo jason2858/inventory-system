@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import type { SalesRecord, Material } from '@/types/domain'
+import type { SalesRecord, SalesRecordItem, Material } from '@/types/domain'
 import {
   getAllSalesRecords,
   createSalesRecord,
@@ -19,9 +19,7 @@ export default function SalesPage() {
   const [formData, setFormData] = useState({
     sale_date: new Date().toISOString().split('T')[0],
     order_number: '',
-    material_id: '',
-    name: '',
-    quantity: 0,
+    items: [{ material_id: 0, name: '', quantity: 0 }] as SalesRecordItem[],
     customer: '',
     sales_amount: 0,
     receiver: '',
@@ -57,17 +55,38 @@ export default function SalesPage() {
     }
   }
 
-  const handleMaterialChange = (materialId: string) => {
-    const material = materials.find((m) => m.id === Number(materialId))
+  // 只顯示可銷售的物料
+  const sellableMaterials = materials.filter((m) => m.can_sell)
+
+  const handleMaterialChange = (index: number, materialId: number) => {
+    const material = sellableMaterials.find((m) => m.id === materialId)
+    const newItems = [...formData.items]
     if (material) {
-      setFormData({
-        ...formData,
+      newItems[index] = {
         material_id: materialId,
         name: material.name,
-      })
+        quantity: newItems[index].quantity || 0,
+      }
     } else {
-      setFormData({ ...formData, material_id: materialId, name: '' })
+      newItems[index] = {
+        material_id: 0,
+        name: '',
+        quantity: 0,
+      }
     }
+    setFormData({ ...formData, items: newItems })
+  }
+
+  const addItem = () => {
+    setFormData({
+      ...formData,
+      items: [...formData.items, { material_id: 0, name: '', quantity: 0 }],
+    })
+  }
+
+  const removeItem = (index: number) => {
+    const newItems = formData.items.filter((_, i) => i !== index)
+    setFormData({ ...formData, items: newItems.length > 0 ? newItems : [{ material_id: 0, name: '', quantity: 0 }] })
   }
 
   const calculateIncome = () => {
@@ -88,13 +107,22 @@ export default function SalesPage() {
     setError(null)
     setSuccess(null)
 
+    // 驗證物料項目
+    const validItems = formData.items.filter(
+      (item) => item.material_id > 0 && item.quantity > 0
+    )
+
+    if (validItems.length === 0) {
+      setError('請至少選擇一個物料並設定數量')
+      setLoading(false)
+      return
+    }
+
     try {
       const recordData = {
         sale_date: formData.sale_date,
         order_number: formData.order_number,
-        material_id: formData.material_id ? Number(formData.material_id) : null,
-        name: formData.name,
-        quantity: formData.quantity,
+        items: validItems,
         customer: formData.customer || null,
         sales_amount: formData.sales_amount,
         receiver: formData.receiver || null,
@@ -125,9 +153,7 @@ export default function SalesPage() {
     setFormData({
       sale_date: new Date().toISOString().split('T')[0],
       order_number: '',
-      material_id: '',
-      name: '',
-      quantity: 0,
+      items: [{ material_id: 0, name: '', quantity: 0 }],
       customer: '',
       sales_amount: 0,
       receiver: '',
@@ -144,9 +170,7 @@ export default function SalesPage() {
     setFormData({
       sale_date: record.sale_date,
       order_number: record.order_number,
-      material_id: record.material_id?.toString() || '',
-      name: record.name,
-      quantity: record.quantity,
+      items: record.items && record.items.length > 0 ? record.items : [{ material_id: 0, name: '', quantity: 0 }],
       customer: record.customer || '',
       sales_amount: record.sales_amount,
       receiver: record.receiver || '',
@@ -247,56 +271,68 @@ export default function SalesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    物料編號
-                  </label>
-                  <select
-                    value={formData.material_id}
-                    onChange={(e) => handleMaterialChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  物料項目 *
+                </label>
+                <div className="space-y-2">
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <select
+                          value={item.material_id}
+                          onChange={(e) =>
+                            handleMaterialChange(index, Number(e.target.value))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value={0}>選擇物料</option>
+                          {sellableMaterials.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.material_code} - {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-32">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...formData.items]
+                            newItems[index].quantity = Number(e.target.value)
+                            setFormData({ ...formData, items: newItems })
+                          }}
+                          min="0"
+                          step="0.01"
+                          placeholder="數量"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      {formData.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                          刪除
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                   >
-                    <option value="">選擇物料（可選）</option>
-                    {materials.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.material_code} - {m.name}
-                      </option>
-                    ))}
-                  </select>
+                    + 新增物料
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    名稱 *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    數量 *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        quantity: Number(e.target.value),
-                      })
-                    }
-                    required
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     銷售對象
@@ -435,13 +471,7 @@ export default function SalesPage() {
                     訂單編號
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    物料編號
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    名稱
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    數量
+                    物料項目
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     銷售對象
@@ -461,7 +491,7 @@ export default function SalesPage() {
                 {records.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={7}
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       尚無銷售紀錄
@@ -476,24 +506,31 @@ export default function SalesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {record.order_number}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.material_id
-                          ? materials.find((m) => m.id === record.material_id)
-                              ?.material_code || '-'
-                          : '-'}
-                      </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        <div>
-                          <div className="font-medium">{record.name}</div>
-                          {record.material_id && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {materials.find((m) => m.id === record.material_id)?.description || ''}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.quantity}
+                        {record.items && record.items.length > 0 ? (
+                          <div className="space-y-1">
+                            {record.items.map((item, idx) => {
+                              const material = materials.find((m) => m.id === item.material_id)
+                              return (
+                                <div key={idx}>
+                                  <div className="font-medium">
+                                    {material?.material_code || '-'} - {item.name}
+                                  </div>
+                                  {material?.description && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {material.description}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500">
+                                    數量: {item.quantity}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {record.customer || '-'}
@@ -529,4 +566,3 @@ export default function SalesPage() {
     </div>
   )
 }
-

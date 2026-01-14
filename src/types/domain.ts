@@ -8,6 +8,8 @@ export interface Material {
   unit: string
   supplier: string | null
   notes: string | null
+  low_stock_alert: number | null // 庫存過低警示值
+  can_sell: boolean // 是否可作為銷售
   updated_at: string
 }
 
@@ -58,14 +60,19 @@ export interface ShipmentComboItemWithDetails extends ShipmentComboItem {
   material?: Material
 }
 
+// 銷售紀錄項目
+export interface SalesRecordItem {
+  material_id: number
+  name: string
+  quantity: number
+}
+
 // 銷售紀錄
 export interface SalesRecord {
   id: number
   sale_date: string
   order_number: string
-  material_id: number | null
-  name: string
-  quantity: number
+  items: SalesRecordItem[] // 多個物料項目
   customer: string | null
   sales_amount: number
   receiver: string | null

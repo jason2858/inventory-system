@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import type { SalesRecord } from '@/types/domain'
+import type { SalesRecord, SalesRecordItem } from '@/types/domain'
 
 /**
  * 取得所有銷售紀錄
@@ -15,7 +15,11 @@ export async function getAllSalesRecords(): Promise<SalesRecord[]> {
     throw new Error(`取得銷售紀錄失敗: ${error.message}`)
   }
 
-  return data || []
+  // 轉換 JSONB items 為陣列
+  return (data || []).map((record: any) => ({
+    ...record,
+    items: Array.isArray(record.items) ? record.items : [],
+  }))
 }
 
 /**
@@ -26,7 +30,10 @@ export async function createSalesRecord(
 ): Promise<SalesRecord> {
   const { data, error } = await supabase
     .from('sales_records')
-    .insert(record)
+    .insert({
+      ...record,
+      items: JSON.stringify(record.items || []),
+    })
     .select()
     .single()
 
@@ -34,7 +41,10 @@ export async function createSalesRecord(
     throw new Error(`新增銷售紀錄失敗: ${error.message}`)
   }
 
-  return data
+  return {
+    ...data,
+    items: Array.isArray(data.items) ? data.items : [],
+  }
 }
 
 /**
@@ -44,9 +54,14 @@ export async function updateSalesRecord(
   id: number,
   updates: Partial<SalesRecord>
 ): Promise<SalesRecord> {
+  const updateData: any = { ...updates }
+  if (updates.items) {
+    updateData.items = JSON.stringify(updates.items)
+  }
+
   const { data, error } = await supabase
     .from('sales_records')
-    .update(updates)
+    .update(updateData)
     .eq('id', id)
     .select()
     .single()
@@ -55,7 +70,10 @@ export async function updateSalesRecord(
     throw new Error(`更新銷售紀錄失敗: ${error.message}`)
   }
 
-  return data
+  return {
+    ...data,
+    items: Array.isArray(data.items) ? data.items : [],
+  }
 }
 
 /**
