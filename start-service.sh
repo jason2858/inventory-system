@@ -71,14 +71,14 @@ fi
 
 # 檢查依賴
 if [ ! -d "node_modules" ]; then
-    echo_info "安裝依賴..."
-    npm install
+    echo_info "安裝依賴（僅生產環境，記憶體限制 512MB）..."
+    NODE_OPTIONS="--max-old-space-size=512" npm install --production
 fi
 
 # 檢查是否需要建置
 if [ ! -d ".next" ]; then
-    echo_info "建置應用..."
-    npm run build
+    echo_info "建置應用（記憶體限制 512MB）..."
+    NODE_OPTIONS="--max-old-space-size=512" npm run build
 fi
 
 # 檢查是否已經運行
@@ -102,6 +102,7 @@ if [ -f ".next/standalone/server.js" ]; then
         --name "inventory-system" \
         --env production \
         --update-env \
+        --max-memory-restart 512M \
         --log logs/pm2-out.log \
         --error logs/pm2-error.log \
         --merge-logs \
@@ -109,6 +110,7 @@ if [ -f ".next/standalone/server.js" ]; then
 else
     echo_info "使用 next start 模式啟動..."
     pm2 start npm --name "inventory-system" -- start \
+        --max-memory-restart 512M \
         --log logs/pm2-out.log \
         --error logs/pm2-error.log \
         --merge-logs \

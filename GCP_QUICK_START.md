@@ -50,10 +50,20 @@ NEXT_TELEMETRY_DISABLED=1
 
 ### 5. 安裝依賴並建置
 
+**重要**：在 GCP 上使用 `--production` 標誌安裝依賴，這樣不會安裝開發依賴（如 Electron），可以節省空間和記憶體。同時限制記憶體使用為 512MB。
+
 ```bash
-npm install
-npm run build
+# 只安裝生產環境依賴（不包含 Electron 等開發工具）
+# 限制記憶體使用為 512MB
+NODE_OPTIONS="--max-old-space-size=512" npm install --production
+
+# 建置應用（也限制記憶體）
+NODE_OPTIONS="--max-old-space-size=512" npm run build
 ```
+
+**注意**：
+- `npm install --production` 會跳過 `devDependencies`，這對 GCP 部署是正確的，因為我們不需要 Electron 等開發工具
+- `NODE_OPTIONS="--max-old-space-size=512"` 限制 Node.js 記憶體使用為 512MB，防止安裝或建置時記憶體溢出
 
 ### 6. 設置防火牆規則（允許 3000 端口）
 
@@ -73,6 +83,8 @@ chmod +x start-service.sh stop-service.sh
 ```
 
 服務現在會在後台運行，即使關閉 SSH 也會繼續運行！
+
+**記憶體限制**：服務已配置為最多使用 512MB 記憶體。如果超過此限制，PM2 會自動重啟服務。
 
 ### 8. 取得 GCP VM 的外部 IP
 
@@ -248,6 +260,29 @@ cat .env.production
 pm2 start .next/standalone/server.js --name inventory-system --update-env
 ```
 
+### 問題：記憶體使用過高
+
+**解決方案：**
+
+服務已配置為在超過 512MB 時自動重啟。如果頻繁重啟，可以：
+
+1. **檢查記憶體使用**
+   ```bash
+   pm2 monit
+   pm2 show inventory-system
+   ```
+
+2. **增加記憶體限制（如果 VM 有足夠記憶體）**
+   ```bash
+   pm2 restart inventory-system --update-env --max-memory-restart 1G
+   pm2 save
+   ```
+
+3. **升級 VM 規格**
+   - 在 GCP Console 中停止 VM
+   - 更改機器類型為更大的規格
+   - 重新啟動 VM
+
 ## 📊 監控服務
 
 ### 查看資源使用
@@ -268,6 +303,27 @@ pm2 show inventory-system
 ps aux | grep node
 ```
 
+## 💾 資源限制
+
+### 記憶體限制
+
+服務已配置為最多使用 **512MB 記憶體**。如果超過此限制，PM2 會自動重啟服務以防止記憶體溢出。
+
+**查看記憶體使用：**
+```bash
+pm2 monit
+# 或
+pm2 show inventory-system
+```
+
+### VM 規格建議
+
+建議使用至少 **1GB RAM** 的 VM 實例，以確保有足夠的記憶體運行服務和系統。
+
+**GCP VM 規格建議：**
+- **最小配置**：1 vCPU, 1GB RAM（e2-micro）
+- **推薦配置**：1 vCPU, 2GB RAM（e2-small）
+
 ## ✅ 檢查清單
 
 部署前：
@@ -275,7 +331,7 @@ ps aux | grep node
 - [ ] 已 clone 代碼
 - [ ] 已執行 `setup-gcp-simple.sh`
 - [ ] 已設置環境變數 `.env.production`
-- [ ] 已執行 `npm install` 和 `npm run build`
+- [ ] 已執行 `npm install --production` 和 `npm run build`
 
 啟動服務：
 - [ ] 已設置 GCP 防火牆規則（允許 3000 端口）
@@ -295,4 +351,6 @@ ps aux | grep node
 - ✅ 可以通過 IP:3000 訪問
 - ✅ SSH 關閉後繼續運行
 - ✅ 可以使用 PM2 管理
+- ✅ 記憶體限制為 512MB（自動重啟保護）
+- ✅ 僅安裝生產環境依賴（節省空間）
 
