@@ -122,14 +122,16 @@ if [ -f ".next/standalone/server.js" ]; then
         echo_info "複製 public 目錄到 standalone..."
         cp -r public .next/standalone/ 2>/dev/null || true
     fi
-    pm2 start .next/standalone/server.js \
+    # 使用絕對路徑並設定正確的工作目錄
+    STANDALONE_DIR="$(pwd)/.next/standalone"
+    pm2 start "$STANDALONE_DIR/server.js" \
         --name "inventory-system" \
-        --cwd "$(pwd)/.next/standalone" \
+        --cwd "$STANDALONE_DIR" \
         --env production \
         --update-env \
         --max-memory-restart 512M \
-        --log logs/pm2-out.log \
-        --error logs/pm2-error.log \
+        --log "$(pwd)/logs/pm2-out.log" \
+        --error "$(pwd)/logs/pm2-error.log" \
         --merge-logs \
         --time
 else
