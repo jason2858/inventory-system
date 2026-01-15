@@ -50,20 +50,39 @@ NEXT_TELEMETRY_DISABLED=1
 
 ### 5. 安裝依賴並建置
 
-**重要**：在 GCP 上使用 `--production` 標誌安裝依賴，這樣不會安裝開發依賴（如 Electron），可以節省空間和記憶體。同時限制記憶體使用為 512MB。
+**重要**：Next.js 建置需要 TypeScript 和 TailwindCSS，但不需要 Electron。我們只安裝必要的建置工具。
 
 ```bash
-# 只安裝生產環境依賴（不包含 Electron 等開發工具）
-# 限制記憶體使用為 512MB
+# 方法 1: 使用安裝腳本（推薦）
+chmod +x install-build-deps.sh
+./install-build-deps.sh
+
+# 方法 2: 手動安裝
+# 先安裝生產環境依賴
 NODE_OPTIONS="--max-old-space-size=512" npm install --production
+
+# 然後只安裝建置必需的開發依賴（不包括 Electron）
+NODE_OPTIONS="--max-old-space-size=512" npm install --save-dev \
+  typescript@^5.3.0 \
+  @types/node@^20.11.0 \
+  @types/react@^18.2.0 \
+  @types/react-dom@^18.2.0 \
+  tailwindcss@^3.4.0 \
+  postcss@^8.4.0 \
+  autoprefixer@^10.4.0 \
+  eslint@^8.56.0 \
+  eslint-config-next@^14.2.0
 
 # 建置應用（也限制記憶體）
 NODE_OPTIONS="--max-old-space-size=512" npm run build
 ```
 
-**注意**：
-- `npm install --production` 會跳過 `devDependencies`，這對 GCP 部署是正確的，因為我們不需要 Electron 等開發工具
-- `NODE_OPTIONS="--max-old-space-size=512"` 限制 Node.js 記憶體使用為 512MB，防止安裝或建置時記憶體溢出
+**說明**：
+- **生產依賴**：next, react, react-dom, @supabase/supabase-js（運行時需要）
+- **建置工具**：typescript, tailwindcss, postcss, autoprefixer（建置時需要）
+- **類型定義**：@types/node, @types/react, @types/react-dom（TypeScript 需要）
+- **不安裝**：electron, electron-builder（桌面應用，GCP 不需要）
+- `NODE_OPTIONS="--max-old-space-size=512"` 限制記憶體使用為 512MB
 
 ### 6. 設置防火牆規則（允許 3000 端口）
 
@@ -171,6 +190,22 @@ nohup npm start > logs/app.log 2>&1 &
 
 但建議使用 PM2，因為它提供更好的進程管理。
 
+## 🔍 診斷服務
+
+如果遇到問題，可以使用診斷腳本：
+
+```bash
+chmod +x check-service.sh
+./check-service.sh
+```
+
+這會檢查：
+- 服務狀態
+- 環境變數設定
+- 端口監聽
+- 本地訪問
+- 日誌資訊
+
 ## 🐛 故障排除
 
 ### 問題：無法訪問 IP:3000
@@ -259,6 +294,39 @@ cat .env.production
 # 或手動指定：
 pm2 start .next/standalone/server.js --name inventory-system --update-env
 ```
+
+### 問題：畫面顯示異常或沒有資料
+
+**解決方案：**
+
+1. **檢查環境變數**
+   ```bash
+   cat .env.production
+   # 確認 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY 已正確設定
+   ```
+
+2. **使用診斷腳本**
+   ```bash
+   ./check-service.sh
+   ```
+
+3. **檢查瀏覽器控制台（F12）**
+   - 查看 Console 是否有錯誤
+   - 查看 Network 標籤，確認資源和 API 請求是否正常
+
+4. **檢查 Supabase 連接**
+   - 確認 Supabase URL 和 Key 正確
+   - 確認 Supabase 資料庫中有資料
+   - 檢查 Supabase Dashboard 中的 API 設定
+
+5. **重新建置（如果 CSS 樣式異常）**
+   ```bash
+   rm -rf .next
+   NODE_OPTIONS="--max-old-space-size=512" npm run build
+   pm2 restart inventory-system
+   ```
+
+詳細故障排除請參考 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ### 問題：記憶體使用過高
 

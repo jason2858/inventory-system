@@ -71,8 +71,21 @@ fi
 
 # 檢查依賴
 if [ ! -d "node_modules" ]; then
-    echo_info "安裝依賴（僅生產環境，記憶體限制 512MB）..."
+    echo_info "安裝依賴（生產環境 + 建置工具，記憶體限制 512MB）..."
+    echo_warn "注意：Next.js 建置需要 TypeScript 和 TailwindCSS，但不包括 Electron"
+    # 先安裝 production 依賴
     NODE_OPTIONS="--max-old-space-size=512" npm install --production
+    # 然後安裝建置必需的 devDependencies（不包括 Electron）
+    NODE_OPTIONS="--max-old-space-size=512" npm install --save-dev \
+      typescript@^5.3.0 \
+      @types/node@^20.11.0 \
+      @types/react@^18.2.0 \
+      @types/react-dom@^18.2.0 \
+      tailwindcss@^3.4.0 \
+      postcss@^8.4.0 \
+      autoprefixer@^10.4.0 \
+      eslint@^8.56.0 \
+      eslint-config-next@^14.2.0
 fi
 
 # 檢查是否需要建置
@@ -98,8 +111,20 @@ echo_info "啟動服務..."
 # 檢查是否有 standalone 模式
 if [ -f ".next/standalone/server.js" ]; then
     echo_info "使用 standalone 模式啟動..."
+    # 確保靜態資源正確連結到 standalone 目錄
+    if [ ! -d ".next/standalone/.next/static" ] && [ -d ".next/static" ]; then
+        echo_info "連結靜態資源到 standalone 目錄..."
+        mkdir -p .next/standalone/.next
+        ln -sf ../../static .next/standalone/.next/static || cp -r .next/static .next/standalone/.next/
+    fi
+    # 確保 public 目錄存在
+    if [ -d "public" ] && [ ! -d ".next/standalone/public" ]; then
+        echo_info "複製 public 目錄到 standalone..."
+        cp -r public .next/standalone/ 2>/dev/null || true
+    fi
     pm2 start .next/standalone/server.js \
         --name "inventory-system" \
+        --cwd "$(pwd)/.next/standalone" \
         --env production \
         --update-env \
         --max-memory-restart 512M \
@@ -108,7 +133,7 @@ if [ -f ".next/standalone/server.js" ]; then
         --merge-logs \
         --time
 else
-    echo_info "使用 next start 模式啟動..."
+    echo_info "使用 next start 模式啟動（推薦，避免靜態資源問題）..."
     pm2 start npm --name "inventory-system" -- start \
         --max-memory-restart 512M \
         --log logs/pm2-out.log \
